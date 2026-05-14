@@ -2,35 +2,34 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from sklearn.datasets import make_regression
+from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor, plot_tree
+from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score
+    accuracy_score,
+    confusion_matrix,
+    classification_report
 )
 
 # ---------------------------------------------------
 # PAGE TITLE
 # ---------------------------------------------------
 
-st.title("🌳 Decision Tree Regression App")
-st.write("Regression using Decision Tree Regressor")
+st.title("🌳 Decision Tree Classification App")
+st.write("Iris Dataset Classification using Decision Tree")
 
 # ---------------------------------------------------
-# CREATE DATASET
+# LOAD DATASET
 # ---------------------------------------------------
 
-X, y = make_regression(
-    n_samples=200,
-    n_features=1,
-    noise=15,
-    random_state=42
+iris = load_iris()
+
+X = pd.DataFrame(
+    iris.data,
+    columns=iris.feature_names
 )
 
-df = pd.DataFrame(X, columns=["Feature"])
-df["Target"] = y
+y = iris.target
 
 # ---------------------------------------------------
 # SIDEBAR - HYPERPARAMETERS
@@ -38,11 +37,16 @@ df["Target"] = y
 
 st.sidebar.header("Hyperparameters")
 
+criterion = st.sidebar.selectbox(
+    "Select Criterion",
+    ["gini", "entropy"]
+)
+
 max_depth = st.sidebar.slider(
     "Max Depth",
     min_value=1,
-    max_value=20,
-    value=5
+    max_value=10,
+    value=3
 )
 
 splitter = st.sidebar.selectbox(
@@ -72,7 +76,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 # MODEL
 # ---------------------------------------------------
 
-model = DecisionTreeRegressor(
+model = DecisionTreeClassifier(
+    criterion=criterion,
     max_depth=max_depth,
     splitter=splitter,
     random_state=42
@@ -81,53 +86,47 @@ model = DecisionTreeRegressor(
 # TRAIN MODEL
 model.fit(X_train, y_train)
 
-# PREDICTIONS
+# PREDICTION
 y_pred = model.predict(X_test)
 
 # ---------------------------------------------------
-# METRICS
+# ACCURACY
 # ---------------------------------------------------
 
-mae = mean_absolute_error(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+accuracy = accuracy_score(y_test, y_pred)
 
-st.subheader("📊 Evaluation Metrics")
-
-st.write(f"MAE : {mae:.2f}")
-st.write(f"MSE : {mse:.2f}")
-st.write(f"R² Score : {r2:.2f}")
+st.subheader("✅ Accuracy")
+st.write(f"Accuracy Score: {accuracy:.2f}")
 
 # ---------------------------------------------------
-# ACTUAL VS PREDICTED
+# CONFUSION MATRIX
 # ---------------------------------------------------
 
-st.subheader("📈 Actual vs Predicted")
+st.subheader("📌 Confusion Matrix")
 
-results = pd.DataFrame({
-    "Actual": y_test,
-    "Predicted": y_pred
-})
+cm = confusion_matrix(y_test, y_pred)
 
-st.dataframe(results.head(10))
+cm_df = pd.DataFrame(
+    cm,
+    columns=iris.target_names,
+    index=iris.target_names
+)
+
+st.dataframe(cm_df)
 
 # ---------------------------------------------------
-# SCATTER PLOT
+# CLASSIFICATION REPORT
 # ---------------------------------------------------
 
-st.subheader("📉 Regression Plot")
+st.subheader("📄 Classification Report")
 
-fig, ax = plt.subplots()
+report = classification_report(
+    y_test,
+    y_pred,
+    target_names=iris.target_names
+)
 
-ax.scatter(X_test, y_test, label="Actual")
-ax.scatter(X_test, y_pred, label="Predicted")
-
-ax.set_xlabel("Feature")
-ax.set_ylabel("Target")
-
-ax.legend()
-
-st.pyplot(fig)
+st.text(report)
 
 # ---------------------------------------------------
 # TREE VISUALIZATION
@@ -135,21 +134,25 @@ st.pyplot(fig)
 
 st.subheader("🌳 Decision Tree Visualization")
 
-fig2, ax2 = plt.subplots(figsize=(15, 10))
+fig, ax = plt.subplots(figsize=(15, 10))
 
 plot_tree(
     model,
+    feature_names=iris.feature_names,
+    class_names=iris.target_names,
     filled=True,
-    feature_names=["Feature"],
-    ax=ax2
+    ax=ax
 )
 
-st.pyplot(fig2)
+st.pyplot(fig)
 
 # ---------------------------------------------------
 # DATASET PREVIEW
 # ---------------------------------------------------
 
-st.subheader("📋 Dataset Preview")
+st.subheader("📊 Dataset Preview")
+
+df = X.copy()
+df["target"] = y
 
 st.dataframe(df.head())
